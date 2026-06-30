@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neurobridge — Product Overview</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#1a1f2e; --muted:#6b7280; --line:#e5e7eb; --accent:#4f46e5; --accent-soft:#eef2ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1080px; margin:0 auto; padding:32px 24px 64px; }
+  header { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  h1 { font-size:22px; margin:0; letter-spacing:-0.01em; }
+  .sub { color:var(--muted); font-size:13px; margin-top:2px; }
+  .live { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#047857; }
+  .dot { width:8px; height:8px; border-radius:50%; background:#10b981; display:inline-block; }
+  .kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:24px 0; }
+  .kpi { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; }
+  .kpi .label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; }
+  .kpi .value { font-size:34px; font-weight:650; margin-top:6px; letter-spacing:-0.02em; }
+  .kpi .note { font-size:12px; color:var(--muted); margin-top:4px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; }
+  .panel h2 { font-size:14px; margin:0 0 16px; }
+  .bar-row { display:grid; grid-template-columns:56px 1fr 40px; align-items:center; gap:10px; margin:9px 0; font-size:13px; }
+  .bar-track { background:var(--accent-soft); border-radius:6px; height:22px; overflow:hidden; }
+  .bar-fill { background:var(--accent); height:100%; border-radius:6px; }
+  .bar-row .num { text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:500; font-size:12px; }
+  td.r,th.r { text-align:right; font-variant-numeric:tabular-nums; }
+  footer { margin-top:28px; color:var(--muted); font-size:12px; }
+  .loading { color:var(--muted); padding:40px 0; text-align:center; }
+  @media (max-width:720px){ .kpis,.grid2 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Neurobridge — Product Overview</h1>
+      <div class="sub">Live data from BigQuery</div>
+    </div>
+    <span class="live"><span class="dot"></span> Live</span>
+  </header>
+  <div id="content"><div class="loading">Loading live data…</div></div>
+  <footer>Source: Neurobridge production database via BigQuery. Verified clinicians = accepted license review.</footer>
+</div>
+<script>
+const API = "/api/product-overview";
+function kpiCard(label,value,note){ return `<div class="kpi"><div class="label">${label}</div><div class="value">${value}</div>${note?`<div class="note">${note}</div>`:""}</div>`; }
+function barChart(rows,labelKey,valKey){ const max=Math.max(...rows.map(r=>r[valKey]),1); return rows.map(r=>{ const pct=(r[valKey]/max)*100; return `<div class="bar-row"><div>${r[labelKey]}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div><div class="num">${r[valKey]}</div></div>`; }).join(""); }
+function geoTable(rows){ const b=rows.map(r=>`<tr><td>${r.state}</td><td class="r">${r.clinicians}</td></tr>`).join(""); return `<table><thead><tr><th>State</th><th class="r">Clinicians</th></tr></thead><tbody>${b}</tbody></table>`; }
+function resTable(rows){ const b=rows.map(r=>`<tr><td>${r.week}</td><td class="r">${r.tickets_opened}</td><td class="r">${r.median_resolution_hours ?? "—"}</td></tr>`).join(""); return `<table><thead><tr><th>Week</th><th class="r">Opened</th><th class="r">Median hrs</th></tr></thead><tbody>${b}</tbody></table>`; }
+fetch(API).then(r=>r.json()).then(d=>{
+  const verified=d.p1_verified_clinicians[0].verified_clinicians;
+  const content=d.p4_content_assets_live[0].content_assets_live;
+  const t=d.p6_issue_tickets[0];
+  document.getElementById("content").innerHTML = `
+    <div class="kpis">
+      ${kpiCard("Verified Clinicians",verified,"accepted license review")}
+      ${kpiCard("Content Assets Live",content,"published posts")}
+      ${kpiCard("Open Issue Tickets",t.open_tickets,t.total_tickets+" total")}
+    </div>
+    <div class="grid2">
+      <div class="panel"><h2>Verified Clinicians by Type</h2>${barChart(d.p8_clinicians_by_type,"clinician_type","clinicians")}</div>
+      <div class="panel"><h2>Clinician Geography (US)</h2>${geoTable(d.p12_clinician_geography)}</div>
+    </div>
+    <div class="panel" style="margin-top:16px"><h2>Issue Resolution (Weekly)</h2>${resTable(d.p13_issue_resolution_weekly)}</div>`;
+}).catch(e=>{ document.getElementById("content").innerHTML = `<div class="loading">Could not reach the API at ${API}. Make sure the server is running, then refresh.</div>`; });
+</script>
+</body>
+</html>

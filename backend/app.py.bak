@@ -1,0 +1,63 @@
+import os, json
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from google.cloud import bigquery
+from google.oauth2 import service_account
+from dotenv import load_dotenv
+
+load_dotenv()
+P = os.environ["GCP_PROJECT"]
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+# Hosted: use the service account JSON from the environment.
+# Local: fall back to your gcloud login.
+creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+if creds_json:
+    creds = service_account.Credentials.from_service_account_info(json.loads(creds_json))
+    client = bigquery.Client(project=P, credentials=creds)
+else:
+    client = bigquery.Client(project=P)
+
+app = FastAPI(title="Neurobridge Dashboard API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
+
+# Dashboard zone -> BigQuery view
+PRODUCT_OVERVIEW = {
+    "p1_verified_clinicians":      "metric_p1_verified_clinicians",
+    "p4_content_assets_live":      "metric_p4_content_assets_live",
+    "p6_issue_tickets":            "metric_p6_issue_tickets",
+    "p8_clinicians_by_type":       "metric_p8_clinicians_by_type",
+    "p12_clinician_geography":     "metric_p12_clinician_geography",
+    "p13_issue_resolution_weekly": "metric_p13_issue_resolution_weekly",
+}
+
+def run_view(view: str):
+    rows = client.query(f"SELECT * FROM `{P}.nb_marts.{view}`").result()
+    return [dict(r) for r in rows]
+
+@app.get("/")
+def index():
+    return FileResponse(os.path.join(HERE, "dashboard.html"))
+
+@app.get("/api")
+def api_info():
+    return {"service": "neurobridge-dashboard-api",
+            "zones": list(PRODUCT_OVERVIEW.keys())}
+
+@app.get("/api/product-overview")
+def product_overview():
+    return {zone: run_view(view) for zone, view in PRODUCT_OVERVIEW.items()}
+
+@app.get("/api/metric/{zone}")
+def metric(zone: str):
+    view = PRODUCT_OVERVIEW.get(zone)
+    if view is None:
+        raise HTTPException(status_code=404, detail=f"unknown zone: {zone}")
+    return run_view(view)

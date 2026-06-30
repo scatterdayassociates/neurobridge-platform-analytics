@@ -1,0 +1,8 @@
+venv/
+__pycache__/
+.env
+*.log
+*.json
+inspect_schema.py
+test_connection.py
+nb-sa-key.json

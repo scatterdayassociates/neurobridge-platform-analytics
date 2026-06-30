@@ -1,0 +1,13 @@
+node_modules/
+venv/
+__pycache__/
+dist/
+.vercel/
+.output/
+.nitro/
+*.log
+.env
+.env.*
+.DS_Store
+*sa-key*.json
+nb-sa-key.json
