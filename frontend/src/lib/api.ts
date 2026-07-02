@@ -32,9 +32,9 @@ export async function fetchTrafficOverview(): Promise<TrafficOverview> {
 }
 
 export type DetailData = {
-  clinicians: { clinician: string; type: string; state: string; city: string; status: string; verified_on: string }[];
+  clinicians: { email: string; type: string; state: string; city: string; status: string; verified_on: string }[];
   traffic: { user: string; source: string; landing: string; sessions: number; state: string }[];
-  tickets: { ticket: string; user: string; status: string; opened: string; resolved: string }[];
+  tickets: { email: string; ticket: string; status: string; opened: string; resolved: string }[];
 };
 
 export async function fetchDetail(): Promise<DetailData> {

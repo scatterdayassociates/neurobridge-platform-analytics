@@ -277,8 +277,8 @@ function Panel({ title, subtitle, children, height = 280, legend, drilldown, pen
   pending?: boolean;
 }) {
   return (
-    <Card className="shadow-none border-border/70 overflow-hidden">
-      <div className="px-5 pt-5 pb-2">
+    <Card className="shadow-none border-border/70 overflow-hidden h-full flex flex-col">
+      <div className="px-5 pt-5 pb-2 shrink-0">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-bold text-foreground tracking-tight">{title}</h3>
           {pending && (
@@ -290,8 +290,9 @@ function Panel({ title, subtitle, children, height = 280, legend, drilldown, pen
         {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
         {pending && <p className="text-xs text-[oklch(0.5_0.18_25)] mt-0.5">Illustrative layout, awaiting in-app events</p>}
       </div>
-      <div style={{ height }} className={cn("px-2", pending && "opacity-50")}>{children}</div>
+      <div style={{ height }} className={cn("px-2 shrink-0", pending && "opacity-50")}>{children}</div>
       {legend && <Legend items={legend} />}
+      <div className="flex-1" />
       {drilldown && <UserDrilldown headers={drilldown.headers} rows={drilldown.rows} />}
     </Card>
   );
@@ -732,11 +733,11 @@ function Dashboard() {
       .catch((e) => console.error("detail fetch failed", e));
     return () => { active = false; };
   }, []);
-  const clinicianDetailByType = detail?.clinicians?.map((r) => ({ Clinician: r.clinician, Type: r.type, Status: r.status, State: r.state, "Verified on": r.verified_on })) ?? [];
-  const clinicianDetailGeo = detail?.clinicians?.map((r) => ({ Clinician: r.clinician, State: r.state, City: r.city, Type: r.type, Status: r.status })) ?? [];
-  const trafficDetailSource = detail?.traffic?.map((r) => ({ User: r.user, Source: r.source, Landing: r.landing, Sessions: r.sessions, State: r.state })) ?? [];
-  const trafficDetailLanding = detail?.traffic?.map((r) => ({ User: r.user, "Landing page": r.landing, Source: r.source, Engaged: "—", State: r.state })) ?? [];
-  const ticketDetail = detail?.tickets?.map((r) => ({ Ticket: r.ticket, User: r.user, Status: r.status, Opened: r.opened, Resolved: r.resolved })) ?? [];
+  const clinicianDetailByType = detail?.clinicians?.map((r) => ({ Email: r.email, Type: r.type, Status: r.status, State: r.state, "Verified on": r.verified_on })) ?? [];
+  const clinicianDetailGeo = detail?.clinicians?.map((r) => ({ Email: r.email, State: r.state, City: r.city, Type: r.type, Status: r.status })) ?? [];
+  const trafficDetailSource = detail?.traffic?.map((r) => ({ Visitor: r.user, Source: r.source, Landing: r.landing, Sessions: r.sessions, State: r.state })) ?? [];
+  const trafficDetailLanding = detail?.traffic?.map((r) => ({ Visitor: r.user, "Landing page": r.landing, Source: r.source, Engaged: "—", State: r.state })) ?? [];
+  const ticketDetail = detail?.tickets?.map((r) => ({ Email: r.email, Ticket: r.ticket, Status: r.status, Opened: r.opened, Resolved: r.resolved })) ?? [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -784,7 +785,7 @@ function Dashboard() {
               <Panel title="Onboarding funnel" subtitle="Sign-up → first action" drilldown={{ headers: ["User", "Role", "Step", "Status", "Signed up"], rows: [] }} pending>
                 <FunnelChart data={onboarding} />
               </Panel>
-              <Panel title="Verified clinicians by type" subtitle="Current totals" drilldown={{ headers: ["Clinician", "Type", "Status", "State", "Verified on"], rows: clinicianDetailByType }}>
+              <Panel title="Verified clinicians by type" subtitle="Current totals" drilldown={{ headers: ["Email", "Type", "Status", "State", "Verified on"], rows: clinicianDetailByType }}>
                 <ClinicianTypes data={clinicianTypeData} />
               </Panel>
               <Panel
@@ -805,7 +806,7 @@ function Dashboard() {
               <Panel title="Ariadne → CC CTR funnel" subtitle="Query → click → view" drilldown={{ headers: ["User", "Query", "Stage", "Status", "When"], rows: [] }} pending>
                 <FunnelChart data={ariadneFunnel} />
               </Panel>
-              <Panel title="Clinician geography" subtitle="Verified clinicians by US state" height={300} drilldown={{ headers: ["Clinician", "State", "City", "Type", "Status"], rows: clinicianDetailGeo }}>
+              <Panel title="Clinician geography" subtitle="Verified clinicians by US state" height={300} drilldown={{ headers: ["Email", "State", "City", "Type", "Status"], rows: clinicianDetailGeo }}>
                 <GeoChoropleth locations={geoLocations} values={geoValues} />
               </Panel>
               <Panel
@@ -815,7 +816,7 @@ function Dashboard() {
                   { label: "Tickets opened", color: C.sky, shape: "square" },
                   { label: "Median resolution (hrs)", color: C.navy, shape: "line" },
                 ]}
-                drilldown={{ headers: ["Ticket", "User", "Status", "Opened", "Resolved"], rows: ticketDetail }}
+                drilldown={{ headers: ["Email", "Ticket", "Status", "Opened", "Resolved"], rows: ticketDetail }}
                 pending
               >
                 <IssueChart />
@@ -844,7 +845,7 @@ function Dashboard() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Panel title="Traffic by source / referrer" subtitle="Sessions, last 28 days" drilldown={{ headers: ["User", "Source", "Landing", "Sessions", "State"], rows: trafficDetailSource }}>
+              <Panel title="Traffic by source / referrer" subtitle="Sessions, last 28 days" drilldown={{ headers: ["Visitor", "Source", "Landing", "Sessions", "State"], rows: trafficDetailSource }}>
                 <TrafficSources data={trafficSourceData} />
               </Panel>
               <Panel title="User retention cohort" subtitle="% of cohort returning each week" height={300} pending drilldown={{ headers: ["User", "Signup cohort", "Weeks active", "Status", "Last seen"], rows: [] }}>
@@ -870,7 +871,7 @@ function Dashboard() {
               </Panel>
             </div>
 
-            <Panel title="Landing pages — top by sessions" subtitle="By sessions, last 28 days" height={320} drilldown={{ headers: ["User", "Landing page", "Source", "Engaged", "State"], rows: trafficDetailLanding }}>
+            <Panel title="Landing pages — top by sessions" subtitle="By sessions, last 28 days" height={320} drilldown={{ headers: ["Visitor", "Landing page", "Source", "Engaged", "State"], rows: trafficDetailLanding }}>
               <LandingPagesBar data={landingData} />
             </Panel>
           </TabsContent>

@@ -1,3 +1,8 @@
+"""
+Row-level detail views for the dashboard drill-down tables.
+detail_clinicians / detail_tickets show user email (joined from users table).
+detail_traffic uses GA4 visitor IDs (no email exists for anonymous traffic).
+"""
 import os
 from google.cloud import bigquery
 from dotenv import load_dotenv
@@ -12,8 +17,14 @@ views = {
   "detail_clinicians": f"""
     CREATE OR REPLACE VIEW `{P}.{DS}.detail_clinicians` AS
     SELECT
-      CONCAT('User ', CAST(c.user_id AS STRING)) AS clinician,
-      c.clinician_type AS type,
+      u.email AS email,
+      CASE
+        WHEN UPPER(c.clinician_type) LIKE '%BCBA%' THEN 'BCBA'
+        WHEN UPPER(c.clinician_type) LIKE '%SLP%'  THEN 'SLP'
+        WHEN UPPER(c.clinician_type) LIKE '%OT%'   THEN 'OT'
+        WHEN UPPER(c.clinician_type) LIKE '%PT%'   THEN 'PT'
+        ELSE c.clinician_type
+      END AS type,
       COALESCE(NULLIF(c.state, ''), '—') AS state,
       COALESCE(NULLIF(c.city, ''), '—') AS city,
       'Verified' AS status,
@@ -25,7 +36,8 @@ views = {
       WHERE last_notified_state = 'accepted'
       GROUP BY user_id
     ) v ON c.user_id = v.user_id
-    ORDER BY c.clinician_type, c.state
+    LEFT JOIN `{P}.{DS}.users` u ON c.user_id = u.user_id
+    ORDER BY type, c.state
   """,
   "detail_traffic": f"""
     CREATE OR REPLACE VIEW `{P}.{DS}.detail_traffic` AS
@@ -62,20 +74,18 @@ views = {
   "detail_tickets": f"""
     CREATE OR REPLACE VIEW `{P}.{DS}.detail_tickets` AS
     SELECT
-      issue_id AS ticket,
-      CONCAT('User ', CAST(user_id AS STRING)) AS user,
-      IF(closed_at IS NULL, 'Open', 'Resolved') AS status,
-      CAST(DATE(created_at) AS STRING) AS opened,
-      IF(closed_at IS NULL, '—', CAST(DATE(closed_at) AS STRING)) AS resolved
-    FROM `{P}.{DS}.tickets`
-    ORDER BY created_at DESC
+      u.email AS email,
+      t.issue_id AS ticket,
+      IF(t.closed_at IS NULL, 'Open', 'Resolved') AS status,
+      CAST(DATE(t.created_at) AS STRING) AS opened,
+      IF(t.closed_at IS NULL, '—', CAST(DATE(t.closed_at) AS STRING)) AS resolved
+    FROM `{P}.{DS}.tickets` t
+    LEFT JOIN `{P}.{DS}.users` u ON t.user_id = u.user_id
+    ORDER BY t.created_at DESC
   """,
 }
 
 for name, ddl in views.items():
     client.query(ddl).result()
-    rows = [dict(r) for r in client.query(f"SELECT * FROM `{P}.{DS}.{name}`").result()]
-    print(f"\ncreated {name}  ({len(rows)} rows)")
-    for r in rows[:2]:
-        print("   sample:", r)
-print("\nDone. Detail views built.")
+    print(f"created {name}")
+print("Done. Detail views built.")
